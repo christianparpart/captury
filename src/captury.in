@@ -1,0 +1,175 @@
+#! /bin/bash
+
+prefix="@prefix@"
+sysconfdir="@sysconfdir@"
+
+# setup reasonable defaults
+CAPTURY_OUTPUT_DIR=${HOME:-.}
+CAPTURY_SCALE=1
+CAPTURY_FPS=25
+CAPTURY_AUTO_CAPTURE=no
+CAPTURY_VERBOSE=1
+CAPTURY_REQUIRE_DISK_MB=4096
+CAPTURY_REQUIRE_DISK_PERCENT=10
+
+# sourcing configuration files
+[[ -f $sysconfdir/captury.conf ]] && source $sysconfdir/captury.conf
+[[ -f ~/.config/captury.conf ]] && source ~/.config/captury.conf
+
+function log() {
+	local level=${1}
+	local message=${2}
+
+	if [[ ${level} -ge ${VERSION} ]]; then
+		echo "${message}"
+	fi
+}
+
+function die() {
+	echo "ERROR: ${*}" 1>&2
+	exit 1
+}
+
+function print_header() {
+	echo "Captury, Version @VERSION@"
+	echo "Copyright (c) 2007 by Christian Parpart <trapni@gentoo.org>"
+	echo
+}
+
+function print_version() {
+	print_header
+}
+
+function print_help() {
+	print_header
+	echo " usage: captury [options] [--] command [command options ...]"
+	echo
+	echo "captury options:"
+	echo "  -v, --verbose      be more verbose when logging messages (can be repeated)"
+	echo "  -q, --quiet        be more quiet when logging messages (can be repeated)"
+	echo "  -V, --version      prints program version and exits"
+	echo "  -h, --help         prints this help and exits"
+	echo
+	echo "  --fps=VALUE        overrides default fps to capture on [25]"
+	echo "  --scale=VALUE      overrides default scaling value [1]"
+	echo "                     A value of 0 disables frame scaling but costs much"
+	echo "                     more CPU load"
+	echo "  --output-dir=PATH  overrides path where to store the captured movies [/tmp]"
+	echo "  --cursor           Explicitely draw a cursor into the movie"
+	echo "  --auto-capture     automatically starts capturing a movie at its earliest"
+	echo "                     possible time"
+	echo
+	echo "  --                 explicitely states, that following arguments belong"
+	echo "                     to the client application."
+	echo
+	echo " System settings are loaded from ${sysconfdir}/captury.conf"
+	echo " You can store user defined settings in ~/.config/captury.conf"
+	echo " Your settings take precedance over system defaults and command line arguments"
+	echo " precede the user settings."
+	echo
+}
+
+function assertOneOf() {
+	local VALUE=${1}
+	shift
+
+	while [ -n "${1}" ]; do
+		[[ "${VALUE}" = "${1}" ]] && return 0
+		shift
+	done
+
+	die "Command line argument error. Try --help."
+}
+
+# {{{ parse command line parameter
+while true; do
+	case "${1}" in
+		--)
+			shift
+			break
+			;;
+		--*)
+			OPTFULL=${1/--/}
+			OPT=${OPTFULL%=*}
+			VALUE=${OPTFULL#*=}
+			shift
+
+			case "${OPT}" in
+				version) print_version; exit 0 ;;
+				help) print_help; exit 0 ;;
+				verbose) CAPTURY_VERBOSE=$[CAPTURY_VERBOSE + 1] ;;
+				quiet) CAPTURY_VERBOSE=$[CAPTURY_VERBOSE - 1] ;;
+				cursor) assertOneOf ${VALUE} no yes ""; CAPTURY_CURSOR=${VALUE:-yes} ;;
+				fps) CAPTURY_FPS=${VALUE} ;;
+				scale) CAPTURY_SCALE=${VALUE} ;;
+				output-dir) CAPTURY_OUTPUT_DIR="${VALUE}" ;;
+				auto-capture) CAPTURY_AUTO_CAPTURE=yes ;;
+				*) die "Unknown parameter: '${OPTFULL}'. Try --help."
+			esac
+			;;
+		-*)
+			OPTLIST=${1/-/}
+			shift
+
+			while [ -n "${OPTLIST}" ]; do
+				OPT="${OPTLIST:0:1}"
+				OPTLIST=${OPTLIST#?}
+
+				case "${OPT}" in
+					V) print_version; exit 0 ;;
+					h|\?) print_help; exit 0 ;;
+					v) CAPTURY_VERBOSE=$[CAPTURY_VERBOSE + 1] ;;
+					q) CAPTURY_VERBOSE=$[CAPTURY_VERBOSE - 1] ;;
+					c) CAPTURY_CURSOR=yes ;;
+					*) die "Unknown parameter: '${1}'. Try --help." ;;
+				esac
+			done
+			;;
+		*)
+			break
+			;;
+	esac
+done
+# }}}
+
+# setup program name
+PROGRAM="${1}"
+[[ -z "${PROGRAM}" ]] && die "No program name given. Try --help."
+which "${PROGRAM}" &>/dev/null || die "Could not locate ${PROGRAM}"
+PROGRAM="$(which ${1})"
+shift
+
+function setupLibraryPath() {
+	local libdirs=( "lib32" "lib64" "lib" )
+	local added=0
+
+	for libdir in ${libdirs[@]}; do
+		local capturylibdir="${prefix}/${libdir}/captury"
+
+		if [[ -f "${capturylibdir}"/libGLcaptury.so ]]; then
+			LD_LIBRARY_PATH="${LD_LIBRARY_PATH}${LD_LIBRARY_PATH:+:}${capturylibdir}"
+			added=$[added + 1]
+
+			log 1 "Adding library path: ${capturylibdir}"
+		fi
+	done
+
+	return $(test ${added} -gt 0)
+}
+
+setupLibraryPath || "Setting up library path failed. Corrupt installation?"
+
+mkdir -p ${CAPTURY_OUTPUT_DIR} || die "Could not create captury output directory: ${CAPTURY_OUTPUT_DIR}"
+
+export CAPTURY_OUTPUT_DIR
+export CAPTURY_SCALE
+export CAPTURY_FPS
+export CAPTURY_AUTO_CAPTURE
+export CAPTURY_CURSOR
+export CAPTURY_VERBOSE
+export CAPTURY_REQUIRE_DISK_MB
+export CAPTURY_REQUIRE_DISK_PERCENT
+
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}"
+
+exec $PROGRAM "${@}"

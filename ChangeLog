@@ -1,0 +1,16 @@
+
+Release 0.2.0 (future):
+	* added `captury --verbose` to print some log messages when toggling movie
+	  capture, taking screenshot, etc.
+	* added explicit cursor drawing support
+	* added screenshots hotkey (F10) to produce PNG images of 
+	  your current screen
+	* output filenames match wine/cedega program names 
+	  if wine/cedega is detected.
+	* command line tool (captury) has been improved wrt usability.
+	* add default config file to @sysconfdir@/captury.conf to be sourced
+	  by captury wrapper. you may override its settings via
+	  ~/.config/captury.conf
+
+Release 0.1.0 (2007-02-16):
+	* initial working version for capturing and encoding video data
