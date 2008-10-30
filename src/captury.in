@@ -32,7 +32,7 @@ function die() {
 
 function print_header() {
 	echo "Captury, Version @VERSION@"
-	echo "Copyright (c) 2007 by Christian Parpart <trapni@gentoo.org>"
+	echo "Copyright (c) 2007 - 2008 by Christian Parpart <trapni@gentoo.org>"
 	echo
 }
 
@@ -154,6 +154,15 @@ function setupLibraryPath() {
 		fi
 	done
 
+	for libdir in ${libdirs[@]}; do
+		local dir="${prefix}/${libdir}"
+		if [[ -f "${dir}/libcaptury.so" ]]; then
+			LD_LIBRARY_PATH="${LD_LIBRARY_PATH}${LD_LIBRARY_PATH:+:}${dir}"
+		fi
+	done
+
+	export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}"
+
 	return $(test ${added} -gt 0)
 }
 
@@ -169,7 +178,5 @@ export CAPTURY_CURSOR
 export CAPTURY_VERBOSE
 export CAPTURY_REQUIRE_DISK_MB
 export CAPTURY_REQUIRE_DISK_PERCENT
-
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}"
 
 exec $PROGRAM "${@}"
