@@ -1,5 +1,5 @@
 
-Release 0.2.0 (future):
+Release 0.3.0:
 	* added `captury --verbose` to print some log messages when toggling movie
 	  capture, taking screenshot, etc.
 	* added explicit cursor drawing support
