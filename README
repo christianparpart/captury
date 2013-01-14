@@ -3,3 +3,5 @@ vim:ai:et:ts=4:nowrap
 ---------------------------------------------------------------
 
 OpenGL video capturing client
+
+See core dependency at: https://github.com/trapni/libcaptury
